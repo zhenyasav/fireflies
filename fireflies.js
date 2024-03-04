@@ -10,7 +10,7 @@
 (function() {
   
   // Number of particles
-  const numberOfParticles = 100000;
+  const numberOfParticles = 100_000;
   
   const glsl = x => x;
   const style = document.createElement('style');
@@ -59,12 +59,10 @@
     varying vec3 vPosition;
 
     void main() {
-        // vec2 position = aPosition.xy + (uMouse - uResolution / 2.0) / uResolution;
         float phase = aPosition.x + aPosition.y;
         vec2 position = aPosition.xy + vec2(sin(uTime + phase), cos(uTime + phase)) * 0.02;
-        // vec2 position = aPosition.xy; // + (uMouse / uResolution * 2.0 - 1.0;
         gl_Position = vec4(position, 0, 1.0);
-        gl_PointSize = 2.0 + 1.0 * sin(uTime * 3.0 + phase * 3.0);
+        gl_PointSize = 2.0 + 1.0 * sin((uTime - phase) * 1.0);
         vPosition = aPosition;
     }
   `;
@@ -77,8 +75,8 @@
 
     void main() {
         float p = vPosition.x + vPosition.y;
-        float phase = (sin(uTime * 3.0 + p * 3.0) + 1.0) / 2.0;
-        gl_FragColor = vec4(1.0, 0.6 + phase * 0.3, 0.35, 1.0); // Warm yellow
+        float phase = sin((uTime - p) * 1.0) / 2.0;
+        gl_FragColor = vec4(1.0, 0.5 + phase * 0.3, 0.35, 1.0); // Warm yellow
     }
   `;
 
@@ -124,7 +122,11 @@
   const uTimeLocation = gl.getUniformLocation(shaderProgram, 'uTime');
   const uMouseLocation = gl.getUniformLocation(shaderProgram, 'uMouse');
   const uResolutionLocation = gl.getUniformLocation(shaderProgram, 'uResolution');
+  const aPositionLocation = gl.getAttribLocation(shaderProgram, 'aPosition');
 
+  // Create a buffer for the particles' positions
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
   // Generate random positions for each particle
   const particlesPositions = new Float32Array(numberOfParticles * 2); // *2 for x, y components
@@ -133,15 +135,29 @@
       particlesPositions[i * 2 + 1] = Math.random() * 2 - 1; // y position, normalized [-1, 1]
   }
 
-  // Create a buffer for the particles' positions
-  const positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
   // Pass the positions data to the buffer
-  gl.bufferData(gl.ARRAY_BUFFER, particlesPositions, gl.STATIC_DRAW);
+  // gl.bufferData(gl.ARRAY_BUFFER, particlesPositions, gl.STATIC_DRAW);
 
-  // Assume 'aPosition' is the attribute in your vertex shader for particle positions
-  const aPositionLocation = gl.getAttribLocation(shaderProgram, 'aPosition');
+  function updatePositions(time) {
+    const random = 0.005;
+    const mouse = 0.00001;
+    for (let i = 0; i < numberOfParticles; i++) {
+        const dx = (Math.random() - 0.5) * random; // Random movement in x
+        const dy = (Math.random() - 0.5) * random; // Random movement in y
+        particlesPositions[i * 2] += dx;
+        particlesPositions[i * 2 + 1] += dy;
+
+        const mx = mouseX / canvas.width * 2 - 1;
+        const my = mouseY / canvas.height * 2 - 1;
+        const dmx = (mx - particlesPositions[i * 2]);
+        const dmy = (my - particlesPositions[i * 2 + 1]);
+        const mr = Math.sqrt(dmx * dmx + dmy * dmy);
+        particlesPositions[i * 2] -= (dmx / Math.abs(dmx)) * mouse * (1 / (mr * mr));
+        particlesPositions[i * 2 + 1] -= (dmy / Math.abs(dmy)) * mouse * (1 / (mr * mr));
+    }
+    // Update the buffer with new particlesPositions
+    gl.bufferData(gl.ARRAY_BUFFER, particlesPositions, gl.DYNAMIC_DRAW);
+  }
 
   // Enable the attribute
   gl.enableVertexAttribArray(aPositionLocation);
@@ -166,6 +182,8 @@
 
   // Animation loop
   function animate(time) {
+    updatePositions();
+
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
