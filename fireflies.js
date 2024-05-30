@@ -10,7 +10,7 @@
 (function() {
   
   // Number of particles
-  const numberOfParticles = 100_000;
+  const numberOfParticles = 1_000_0;
   
   const glsl = x => x;
   const style = document.createElement('style');
@@ -62,7 +62,7 @@
         float phase = aPosition.x + aPosition.y;
         vec2 position = aPosition.xy + vec2(sin(uTime + phase), cos(uTime + phase)) * 0.02;
         gl_Position = vec4(position, 0, 1.0);
-        gl_PointSize = 2.0 + 1.0 * sin((uTime - phase) * 1.0);
+        gl_PointSize = 3.0 + 2.0 * sin((uTime - phase));
         vPosition = aPosition;
     }
   `;
@@ -76,7 +76,7 @@
     void main() {
         float p = vPosition.x + vPosition.y;
         float phase = sin((uTime - p) * 1.0) / 2.0;
-        gl_FragColor = vec4(1.0, 0.5 + phase * 0.3, 0.35, 1.0); // Warm yellow
+        gl_FragColor = vec4(1.0, 0.7 + phase * 0.3, 0.35, 1.0); // Warm yellow
     }
   `;
 
